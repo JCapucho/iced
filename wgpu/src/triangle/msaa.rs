@@ -1,5 +1,6 @@
 use crate::settings;
 
+// TODO: wgpu may support this directly now
 #[derive(Debug)]
 pub struct Blit {
     format: wgpu::TextureFormat,
@@ -32,7 +33,10 @@ impl Blit {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
                     count: None,
                 }],
             });
@@ -53,9 +57,11 @@ impl Blit {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
-                        dimension: wgpu::TextureViewDimension::D2,
-                        component_type: wgpu::TextureComponentType::Float,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float {
+                            filterable: true,
+                        },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
@@ -69,11 +75,11 @@ impl Blit {
                 bind_group_layouts: &[&constant_layout, &texture_layout],
             });
 
-        let vs_module = device.create_shader_module(wgpu::include_spirv!(
+        let vs_module = device.create_shader_module(&wgpu::include_spirv!(
             "../shader/blit.vert.spv"
         ));
 
-        let fs_module = device.create_shader_module(wgpu::include_spirv!(
+        let fs_module = device.create_shader_module(&wgpu::include_spirv!(
             "../shader/blit.frag.spv"
         ));
 
@@ -111,7 +117,7 @@ impl Blit {
                 }],
                 depth_stencil_state: None,
                 vertex_state: wgpu::VertexStateDescriptor {
-                    index_format: wgpu::IndexFormat::Uint16,
+                    index_format: None,
                     vertex_buffers: &[],
                 },
                 sample_count: 1,
@@ -172,6 +178,7 @@ impl Blit {
     ) {
         let mut render_pass =
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("resolve msaa"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachmentDescriptor {
                         attachment: target,
@@ -227,7 +234,7 @@ impl Targets {
             sample_count,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
         });
 
         let resolve = device.create_texture(&wgpu::TextureDescriptor {
@@ -237,7 +244,7 @@ impl Targets {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
                 | wgpu::TextureUsage::SAMPLED,
         });
 

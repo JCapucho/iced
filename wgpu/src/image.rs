@@ -415,6 +415,7 @@ impl Pipeline {
 
             let mut render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("draw images"),
                     color_attachments: &[
                         wgpu::RenderPassColorAttachmentDescriptor {
                             attachment: target,

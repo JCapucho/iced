@@ -86,8 +86,9 @@ impl Pipeline {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: true,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
                         min_binding_size: wgpu::BufferSize::new(
                             mem::size_of::<Uniforms>() as u64,
                         ),
@@ -109,11 +110,14 @@ impl Pipeline {
                 layout: &constants_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(
-                        constants_buffer
-                            .raw
-                            .slice(0..std::mem::size_of::<Uniforms>() as u64),
-                    ),
+                    resource: wgpu::BindingResource::Buffer {
+                        // TODO: is this supposed to just be the size of one Uniforms struct?
+                        buffer: &constants_buffer.raw,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(
+                            std::mem::size_of::<Uniforms>() as u64,
+                        ),
+                    },
                 }],
             });
 
@@ -124,11 +128,11 @@ impl Pipeline {
                 bind_group_layouts: &[&constants_layout],
             });
 
-        let vs_module = device.create_shader_module(wgpu::include_spirv!(
+        let vs_module = device.create_shader_module(&wgpu::include_spirv!(
             "shader/triangle.vert.spv"
         ));
 
-        let fs_module = device.create_shader_module(wgpu::include_spirv!(
+        let fs_module = device.create_shader_module(&wgpu::include_spirv!(
             "shader/triangle.frag.spv"
         ));
 
@@ -166,7 +170,7 @@ impl Pipeline {
                 }],
                 depth_stencil_state: None,
                 vertex_state: wgpu::VertexStateDescriptor {
-                    index_format: wgpu::IndexFormat::Uint32,
+                    index_format: Some(wgpu::IndexFormat::Uint32),
                     vertex_buffers: &[wgpu::VertexBufferDescriptor {
                         stride: mem::size_of::<Vertex2D>() as u64,
                         step_mode: wgpu::InputStepMode::Vertex,
@@ -252,11 +256,19 @@ impl Pipeline {
                     layout: &self.constants_layout,
                     entries: &[wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::Buffer(
-                            self.uniforms_buffer.raw.slice(
-                                0..std::mem::size_of::<Uniforms>() as u64,
-                            ),
-                        ),
+                        resource: wgpu::BindingResource::Buffer {
+                            // TODO: is this supposed to just be the size of one Uniforms struct?
+                            //self.uniforms_buffer.raw.slice(
+                            //0..std::mem::size_of::<Uniforms>() as u64,
+                            //),
+                            buffer: &self.uniforms_buffer.raw,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(std::mem::size_of::<
+                                Uniforms,
+                            >(
+                            )
+                                as u64),
+                        },
                     }],
                 });
         }
@@ -356,6 +368,7 @@ impl Pipeline {
 
             let mut render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("draw triangles"),
                     color_attachments: &[
                         wgpu::RenderPassColorAttachmentDescriptor {
                             attachment,
@@ -390,6 +403,7 @@ impl Pipeline {
                     self.index_buffer
                         .raw
                         .slice(index_offset * mem::size_of::<u32>() as u64..),
+                    wgpu::IndexFormat::Uint32,
                 );
 
                 render_pass.set_vertex_buffer(

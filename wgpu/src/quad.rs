@@ -24,8 +24,9 @@ impl Pipeline {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: wgpu::BufferSize::new(
                             mem::size_of::<Uniforms>() as u64,
                         ),
@@ -46,9 +47,7 @@ impl Pipeline {
             layout: &constant_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(
-                    constants_buffer.slice(..),
-                ),
+                resource: constants_buffer.as_entire_binding(),
             }],
         });
 
@@ -59,11 +58,13 @@ impl Pipeline {
                 bind_group_layouts: &[&constant_layout],
             });
 
-        let vs_module = device
-            .create_shader_module(wgpu::include_spirv!("shader/quad.vert.spv"));
+        let vs_module = device.create_shader_module(&wgpu::include_spirv!(
+            "shader/quad.vert.spv"
+        ));
 
-        let fs_module = device
-            .create_shader_module(wgpu::include_spirv!("shader/quad.frag.spv"));
+        let fs_module = device.create_shader_module(&wgpu::include_spirv!(
+            "shader/quad.frag.spv"
+        ));
 
         let pipeline =
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -99,7 +100,7 @@ impl Pipeline {
                 }],
                 depth_stencil_state: None,
                 vertex_state: wgpu::VertexStateDescriptor {
-                    index_format: wgpu::IndexFormat::Uint16,
+                    index_format: Some(wgpu::IndexFormat::Uint16),
                     vertex_buffers: &[
                         wgpu::VertexBufferDescriptor {
                             stride: mem::size_of::<Vertex>() as u64,
@@ -219,6 +220,7 @@ impl Pipeline {
 
             let instance_bytes = bytemuck::cast_slice(&instances[i..end]);
 
+            // TODO: write to buffers all at once before rendering
             let mut instance_buffer = staging_belt.write_buffer(
                 encoder,
                 &self.instances,
@@ -232,6 +234,7 @@ impl Pipeline {
             {
                 let mut render_pass =
                     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("draw quads"),
                         color_attachments: &[
                             wgpu::RenderPassColorAttachmentDescriptor {
                                 attachment: target,
@@ -247,7 +250,10 @@ impl Pipeline {
 
                 render_pass.set_pipeline(&self.pipeline);
                 render_pass.set_bind_group(0, &self.constants, &[]);
-                render_pass.set_index_buffer(self.indices.slice(..));
+                render_pass.set_index_buffer(
+                    self.indices.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
                 render_pass.set_vertex_buffer(0, self.vertices.slice(..));
                 render_pass.set_vertex_buffer(1, self.instances.slice(..));
                 render_pass.set_scissor_rect(
