@@ -168,7 +168,7 @@ where
     event_loop.run(move |event, _, control_flow| {
         use winit::event_loop::ControlFlow;
 
-        if let ControlFlow::Exit = control_flow {
+        if let ControlFlow::Exit = *control_flow {
             return;
         }
 
