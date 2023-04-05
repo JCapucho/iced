@@ -14,8 +14,9 @@ categories = ["gui"]
 debug = ["iced_native/debug"]
 
 [dependencies]
-winit = "0.27"
-window_clipboard = "0.2"
+winit = "0.28"
+# window_clipboard = "0.2"
+window_clipboard = { git = "https://github.com/TobTobXX/window_clipboard.git", rev = "1392da8339c8aebb9849d00eb7383a73ed076f1d" }
 log = "0.4"
 thiserror = "1.0"
 

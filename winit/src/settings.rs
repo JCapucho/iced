@@ -79,9 +79,13 @@ impl Window {
             .with_decorations(self.decorations)
             .with_transparent(self.transparent)
             .with_window_icon(self.icon)
-            .with_always_on_top(self.always_on_top)
             .with_fullscreen(conversion::fullscreen(primary_monitor, mode))
             .with_visible(conversion::visible(mode));
+
+        if self.always_on_top {
+            window_builder = window_builder
+                .with_window_level(winit::window::WindowLevel::AlwaysOnTop);
+        }
 
         if let Some((width, height)) = self.min_size {
             window_builder = window_builder
